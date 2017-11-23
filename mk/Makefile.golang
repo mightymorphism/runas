@@ -1,0 +1,37 @@
+# Copyright (c) 2017 Trough Creek Holdings, LLC.  All Rights Reserved
+
+$(foreach _, init check clean nuke reset, $(eval $_: go_$_))
+
+define GO_BUILD_template
+#.PHONY: build_${1}
+${ROOT}/bin/${1}: build_${1}
+build_${1}:
+	go install ${GO_FLAGS} -v ./${1}
+
+build_race_${1}:
+	go install -race ${GO_FLAGS} -v ./${1}
+
+nuke_${1}:
+	rm -f ${ROOT}/bin/${1}
+endef
+
+ifdef GO_PROGS
+$(foreach t, ${GO_PROGS}, $(eval $(call GO_BUILD_template,$t)))
+endif
+
+go_init:
+
+go_check:
+	go version | grep ${GO_VERSION} > /dev/null
+
+go_build: $(patsubst %, build_%, ${GO_PROGS})
+
+go_clean:
+	go clean
+
+go_nuke: go_clean $(patsubst %,nuke_%, ${GO_PROGS})
+	rm -Rf ${ROOT}/pkg/*
+
+go_race: go_clean $(patsubst %,build_race_%, ${GO_PROGS})
+
+go_reset:

@@ -1,0 +1,46 @@
+# Copyright (c) 2017 Trough Creek Holdings, LLC.  All Rights Reserved
+
+define DOCKER_BUILD_template
+.PHONY: docker_build_${1}
+build/Dockerfile.${1}: src/${1}.dockerb
+	erb package_revision=${REVISION} src/${1}.dockerb > build/Dockerfile.${1}
+
+docker_build_${1}: build/Dockerfile.${1}
+	(cd ${ROOT} && docker build -f ${CURDIR}/build/Dockerfile.${1} -t ${DOCKER_NS}/${1}:${REVISION} .)
+
+docker_tag_${1}: docker_build_${1}
+	docker tag ${DOCKER_NS}/${1}:${REVISION} ${DOCKER_NS}/${1}:latest
+
+docker_clean_${1}:
+	@docker images -q ${DOCKER_NS}/${1}:${REVISION} | xargs -I{} -r -n 1 bash -c 'echo "Removing {}"; docker rmi {}'
+
+docker_nuke_${1}:
+	@rm -f build/Dockerfile.${1}
+	@docker images -q ${DOCKER_NS}/${1} | xargs -I{} -r -n 1 bash -c 'echo "Removing {}"; docker rmi {}'
+endef
+
+ifdef DOCKER_CONTAINERS
+$(foreach t, ${DOCKER_CONTAINERS}, $(eval $(call DOCKER_BUILD_template,$t)))
+endif
+
+docker_depend:
+	(cd ${ROOT} && ${ROOT}/bin/docker-deps -p ${DOCKER_NS} -f make gen docker) > Makefile.deps
+
+docker_build: $(patsubst %, docker_build_%, ${DOCKER_CONTAINERS})
+
+docker_tag_latest: $(patsubst %, docker_tag_%, ${DOCKER_CONTAINERS})
+
+docker_clean: $(patsubst %,docker_clean_%, ${DOCKER_CONTAINERS})
+
+docker_nuke: docker_nuke_untagged $(patsubst %,docker_nuke_%, ${DOCKER_CONTAINERS})
+
+docker_nuke_dangling:
+	@docker images -q --filter "dangling=true" | xargs -I{} -r -n 1 bash -c 'echo "Removing {}"; docker rmi {}'
+
+docker_nuke_exited:
+	# FUTURE: replace with docker {container,system} prune
+	docker ps -q  --filter "status=exited" | xargs -r -n 1 docker rm
+
+docker_cleanup:
+	${MAKE} docker_nuke_exited
+	${MAKE} docker_nuke_dangling

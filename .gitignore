@@ -1,0 +1,16 @@
+*.swp
+
+# C build artifacts
+*.a
+*.o
+*.so
+
+# OS generated files
+.DS_Store
+.DS_Store?
+
+/docker/build/Dockerfile.*
+
+/bin
+/pkg
+/tmp
