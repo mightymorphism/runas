@@ -5,6 +5,7 @@ ROOT=$(abspath ${CURDIR}/..)
 SUBDIR=
 
 DOCKER_CONTAINERS=$(shell ${ROOT}/bin/docker-deps -p ${DOCKER_NS} -f make list .)
+DOCKER_COMPOSITIONS=$(patsubst src/compose-%.yml.erb, %, $(wildcard src/compose*.yml.erb))
 
 include ${ROOT}/mk/Makefile.vars
 include ${ROOT}/mk/Makefile.docker

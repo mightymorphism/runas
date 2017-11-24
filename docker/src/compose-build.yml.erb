@@ -1,0 +1,10 @@
+#version: "2"
+build:
+  privileged: true
+  environment:
+    - DOCKER=true
+  image: runas/base:<%= package_revision %>
+  command: make package
+  volumes:
+    - <%= File.join(ENV['BUILD_RELROOT'], '..') %>:/src
+  working_dir: /src

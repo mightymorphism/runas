@@ -10,6 +10,7 @@
 .DS_Store?
 
 /docker/build/Dockerfile.*
+/docker/build/compose-*.yml
 
 /bin
 /pkg
