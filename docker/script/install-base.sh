@@ -8,9 +8,9 @@ apt-get -y update
 # Install basic shell utilities
 apt-get install -y file wget --no-install-recommends
 apt-get install -y vim-tiny --no-install-recommends
-apt-get install -y libpq-dev postgresql-client --no-install-recommends
 apt-get install -y ca-certificates --no-install-recommends
 apt-get install -y locales
+apt-get install -y ruby
 
 apt-get clean
 
