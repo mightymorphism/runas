@@ -14,6 +14,8 @@ check:
 build:
 	make -C src all
 
-release:
+version:
 	bash mk/packaging/mkversion.sh src/runas
+
+release: git_no_untracked
 	docker-compose -f docker/build/compose-build.yml run build

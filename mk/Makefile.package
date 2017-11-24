@@ -1,0 +1,16 @@
+# Copyright (c) 2017 Trough Creek Holdings, LLC.  All Rights Reserved
+
+package:
+	# Clumsy detection and handling of a docker build environment
+	# Don't use runas so we can build it without already having it
+	if [ "$${DOCKER}" = true ] ; then			\
+		${ROOT}/mk/packaging/docker-setup.sh ;		\
+		su - build -c 'bash -l -c "cd src && $(MAKE) package_guts"' ; \
+	else							\
+		$(MAKE) package_guts ;				\
+	fi
+
+package_guts: git_no_untracked dpkg_deb_present # build
+
+dpkg_deb_present:
+	@which dpkg-deb
