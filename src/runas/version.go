@@ -2,5 +2,5 @@
 package main
 
 const BuildRelease = "0.0.1"
-const BuildRevision = "673d1ca89908842416cedda2db3ee100bb58f557"
-const BuildDate = "2017-11-24 15:21:57 -0500"
+const BuildRevision = "7658a2895cf1ecfe5bb2476b4e0c939e41f2a673"
+const BuildDate = "2017-11-24 18:13:44 -0500"
