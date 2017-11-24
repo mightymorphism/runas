@@ -23,4 +23,5 @@ release_depend:
 	$(MAKE) -C docker all
 
 release: git_no_untracked release_depend
-	docker-compose -f docker/build/compose-build.yml run build
+release:
+	bash mk/packaging/mkversion.sh src/runas
