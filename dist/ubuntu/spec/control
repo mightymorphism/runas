@@ -1,0 +1,8 @@
+Package: runas
+Version: VERSION
+Section: base
+Priority: optional
+Depends: bash, libc6 (>= 2.2.5)
+Architecture: amd64
+Maintainer: Trough Creek Holdings, LLC.
+Description: A simplified sudo for building Docker containers

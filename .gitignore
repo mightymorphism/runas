@@ -12,6 +12,8 @@
 /docker/build/Dockerfile.*
 /docker/build/compose-*.yml
 
+/dist/ubuntu/deb/*.deb
+
 /bin
 /pkg
 /tmp
