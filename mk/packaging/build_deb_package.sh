@@ -6,7 +6,7 @@ set -e
 while [[ $# -gt 1 ]]
 do
 	case "$1" in
-	-o) overlay="true" ;;
+	-o) overlay="true"; shift ;;
 	*) echo "Unknown option \"$1\"" 1>&2 ; exit 1 ;;
 	esac
 done
@@ -21,6 +21,9 @@ package_name="${PACKAGE_NAME}-${PACKAGE_VERSION}"
 cd ${PACKAGE_DIR}
 
 echo "BUILD_ROOT: ${BUILD_ROOT}"
+echo "RELEASE: ${RELEASE}"
+echo "RELEASE_DATE: ${RELEASE_DATE}"
+
 echo "Version: ${PACKAGE_VERSION}"
 
 mkdir -p ${package_name} && cd ${package_name}
