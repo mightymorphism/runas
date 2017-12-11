@@ -1,6 +1,6 @@
 # Copyright (c) 2017 Trough Creek Holdings, LLC.  All Rights Reserved
 
-$(foreach _, init check clean nuke reset, $(eval $_: go_$_))
+$(foreach _, init check clean nuke, $(eval $_: go_$_))
 
 define GO_BUILD_template
 #.PHONY: build_${1}
@@ -33,5 +33,3 @@ go_nuke: go_clean $(patsubst %,nuke_%, ${GO_PROGS})
 	rm -Rf ${ROOT}/pkg/*
 
 go_race: go_clean $(patsubst %,build_race_%, ${GO_PROGS})
-
-go_reset:

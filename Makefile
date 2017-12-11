@@ -5,17 +5,19 @@ ROOT=$(abspath ${CURDIR})
 SUBDIR=src\
 	docker
 
+RECURSIVE_TARGETS := init depend clean nuke
+
 include ${ROOT}/mk/Makefile.vars
 include ${ROOT}/mk/Makefile.golang
 include ${ROOT}/mk/Makefile.package
 
 check:
 
-build:
-	make -C src all
+all:
+	@echo "Please specify target: build, docker, release"; exit 1
 
-version:
-	bash mk/packaging/mkversion.sh src/runas
+build:
+	${MAKE} -C src all
 
 release: git_no_untracked
 	docker-compose -f docker/build/compose-build.yml run build
