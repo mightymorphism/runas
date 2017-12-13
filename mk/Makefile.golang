@@ -31,5 +31,6 @@ go_clean:
 
 go_nuke: go_clean $(patsubst %,nuke_%, ${GO_PROGS})
 	rm -Rf ${ROOT}/pkg/*
+	rm -f ${ROOT}/dist/ubuntu/deb/*
 
 go_race: go_clean $(patsubst %,build_race_%, ${GO_PROGS})
