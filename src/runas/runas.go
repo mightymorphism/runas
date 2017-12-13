@@ -20,8 +20,9 @@ func init() {
 	runtime.LockOSThread()
 }
 
-var re_exec = flag.Bool("reexec", false, "Re-exec as new user with bash -l")
-var user_spec = flag.String("user", "", "Specify user[:group] for exec")
+var help = flag.Bool("h", false, "Print help message")
+var re_exec = flag.Bool("r", true, "Re-exec as new user with bash -l")
+var user_spec = flag.String("u", "", "Specify user[:group] for exec")
 
 func main() {
 	var err error
@@ -39,7 +40,7 @@ func main() {
 
 	args := flag.Args()
 
-	if len(args) == 0 {
+	if len(args) == 0 || *help {
 		fmt.Fprint(os.Stderr, "Usage: runas [options] program [args..]")
 		fmt.Fprint(os.Stderr, "\n\n")
 		flag.PrintDefaults()
