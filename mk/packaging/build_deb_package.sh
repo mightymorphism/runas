@@ -21,9 +21,6 @@ package_name="${PACKAGE_NAME}-${PACKAGE_VERSION}"
 cd ${PACKAGE_DIR}
 
 echo "BUILD_ROOT: ${BUILD_ROOT}"
-echo "RELEASE: ${RELEASE}"
-echo "RELEASE_DATE: ${RELEASE_DATE}"
-
 echo "Version: ${PACKAGE_VERSION}"
 
 mkdir -p ${package_name} && cd ${package_name}
