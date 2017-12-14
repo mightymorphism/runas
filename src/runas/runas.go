@@ -85,7 +85,7 @@ func main() {
 			log.Fatalf("error: unable to read /proc/self/exe")
 		}
 
-		cmd := fmt.Sprintf("%s %s", path, ShellJoin(args...))
+		cmd := fmt.Sprintf("%s -r=false %s", path, ShellJoin(args...))
 		bash_args := []string{"/bin/bash", "-l", "-c", cmd}
 
 		if err = syscall.Exec("/bin/bash", bash_args, os.Environ()); err != nil {
