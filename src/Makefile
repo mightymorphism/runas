@@ -13,6 +13,8 @@ all: go_prep go_build
 
 update: go_update
 
+depend: go_depend
+
 fmt:
 	find . -type d \( -name vendor -o -name golang.org \) -prune -o -name '*.go' -print | xargs -n 1 gofmt -w
 

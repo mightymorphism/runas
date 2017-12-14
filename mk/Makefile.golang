@@ -24,6 +24,8 @@ go_init:
 go_check:
 	go version | grep ${GO_VERSION} > /dev/null
 
+go_depend:
+
 go_build: $(patsubst %, build_%, ${GO_PROGS})
 
 go_clean:

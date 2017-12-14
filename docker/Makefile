@@ -14,7 +14,8 @@ include ${ROOT}/mk/Makefile.docker
 
 all: docker_build
 
-depend: docker_depend
+docker_compile: docker_depend
+docker_build: docker_compile
 
 list:
 	@echo ${DOCKER_CONTAINERS}
