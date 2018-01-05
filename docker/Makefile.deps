@@ -1,2 +1,3 @@
 src/base.dockerb: ./../REVISION
+build/compose-build.yml: src/compose-build.yml.erb
 src/compose-build.yml.erb: ./../REVISION

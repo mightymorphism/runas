@@ -1,6 +1,8 @@
 # Copyright (c) 2017 Trough Creek Holdings, LLC.  All Rights Reserved
 
-$(foreach _, init check clean nuke, $(eval $_: go_$_))
+# Make go_* dependency of non-go version
+$(foreach _, init check clean nuke reset, $(eval $_: go_$_))
+$(foreach _, init check clean nuke reset, $(eval .PHONY: go_$_))
 
 define GO_BUILD_template
 #.PHONY: build_${1}
