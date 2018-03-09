@@ -22,9 +22,6 @@ build:
 release_depend:
 	$(MAKE) -C docker all
 
-build:
-	${MAKE} -C src all
-
 release: git_no_untracked release_depend
 release:
 	bash mk/packaging/mkversion.sh src/runas
