@@ -9,6 +9,7 @@ RECURSIVE_TARGETS := init depend clean nuke
 
 include ${ROOT}/mk/Makefile.vars
 include ${ROOT}/mk/Makefile.golang
+include ${ROOT}/mk/Makefile.docker
 include ${ROOT}/mk/Makefile.package
 
 check:
@@ -27,3 +28,4 @@ release_version:
 	bash mk/packaging/mkversion.sh src/waitfor
 
 release: git_no_untracked release_depend
+	docker-compose -f docker/build/compose-build.yml up

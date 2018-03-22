@@ -9,5 +9,5 @@ services:
     image: runas:base-<%= package_revision %>
     command: make package
     volumes:
-      - <%= File.join(ENV['BUILD_RELROOT'], '..') %>:/src
+      - <%= ENV['BUILD_ROOT'] %>:/src
     working_dir: /src

@@ -89,7 +89,6 @@ func waitfor(network, addr string, duration time.Duration) (err error, remaining
 		// read: connection refused
 		if t.Op == "dial" || t.Op == "read" {
 			if remaining > 0 {
-fmt.Fprintf(os.Stderr, "here 2 %q %d\n", t.Op, remaining)
 				retry = true
 			}
 		}

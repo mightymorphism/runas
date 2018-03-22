@@ -17,7 +17,7 @@ do
 	esac
 done
 
-useradd -m -s /bin/bash -d $home build
+id -u build || useradd -m -s /bin/bash -d $home build
 chown -R build:build ${home}
 
 if [ -n "${overlay}" ]
@@ -34,5 +34,9 @@ then
 	mount -t overlay overlay -o lowerdir=${src},upperdir=${over}/upper,workdir=${over}/work ${home}/src
 else
 	echo "Linking docker volume..."
-	ln -sf ${src} ${home}/src
+	if [ \! -e ${home}/src ]
+	then
+		echo ln -sf ${src} ${home}/src
+		ln -sf ${src} ${home}/src
+	fi
 fi
