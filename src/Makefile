@@ -4,7 +4,8 @@ ROOT=$(abspath ${CURDIR}/..)
 
 export GOPATH:=${ROOT}
 
-GO_PROGS=runas
+GO_PROGS=runas\
+	waitfor
 
 include ${ROOT}/mk/Makefile.vars
 include ${ROOT}/mk/Makefile.golang
