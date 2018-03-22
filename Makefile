@@ -22,6 +22,8 @@ build:
 release_depend:
 	$(MAKE) -C docker all
 
-release: git_no_untracked release_depend
-release:
+release_version:
 	bash mk/packaging/mkversion.sh src/runas
+	bash mk/packaging/mkversion.sh src/waitfor
+
+release: git_no_untracked release_depend
