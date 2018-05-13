@@ -1,29 +1,37 @@
 #! /bin/bash
-# Copyright (c) 2017 Trough Creek Holdings, LLC.  All Rights Reserved
+# Copyright (c) 2017, 2018 Trough Creek Holdings, LLC.  All Rights Reserved
 
 set -e
 
-apt-get -y update
+if [ -f /root/package-maintainer.asc ]
+then
+	apt-key add /root/package-maintainer.asc
+fi
+
+rm -f /etc/apt/apt.conf.d/recommends
+echo 'APT::Install-Recommends "false";' >> /etc/apt/apt.conf.d/recommends
+echo 'APT::Install-Suggests "false";' >> /etc/apt/apt.conf.d/recommends
+
+apt-get update -y
+apt-get upgrade -y
 
 # Install basic shell utilities
-apt-get install -y file wget --no-install-recommends
-apt-get install -y vim-tiny --no-install-recommends
-apt-get install -y ca-certificates --no-install-recommends
+apt-get install -y file wget
+apt-get install -y vim-tiny less
+apt-get install -y dnsutils telnet
+apt-get install -y libpq-dev postgresql-client
+apt-get install -y ca-certificates
 apt-get install -y locales
-apt-get install -y ruby
+apt-get install -y runas
 
 apt-get clean
 
 localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
+update-locale LANG=en_US.UTF-8
 
 export LOCALE="en_US.utf8"
 echo 'export LOCALE=en_US.utf8' >> /etc/profile.d/locale.sh
+echo 'export LANG=en_US.utf8' >> /etc/profile.d/locale.sh
 
 # Update the set of installed CA certs
 /usr/sbin/update-ca-certificates
-
-# Install golang
-golang_version=`/usr/local/bin/cfg-version golang`
-wget --no-verbose https://storage.googleapis.com/golang/go${golang_version}.linux-amd64.tar.gz
-tar -C /usr/local -xzf go${golang_version}.linux-amd64.tar.gz
-echo 'export PATH=$PATH:/usr/local/go/bin' >> /etc/profile.d/golang.sh

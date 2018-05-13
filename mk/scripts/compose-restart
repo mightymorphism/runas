@@ -29,12 +29,12 @@ fi
 
 if [ -z "$registry" ]
 then
-	registry="482478231273.dkr.ecr.us-east-1.amazonaws.com/morphisms/portal"
+	registry="${DOCKER_REGISTRY}/${DOCKER_REPOSITORY}"
 fi
 
 if [ -z "$profile" ]
 then
-	profile="morphisms_ecr_bot_portal_ro"
+	profile="${DOCKER_AWS_PROFILE}"
 fi
 
 aws --profile ${profile} ecr get-login --no-include-email --region ${region} | bash
@@ -44,7 +44,7 @@ then
 	for service in nginx api
 	do
 	        docker pull ${registry}:${service}-${revision}
-	        docker tag ${registry}:${service}-${revision} portal:${service}-${revision}
+	        docker tag ${registry}:${service}-${revision} ${PACKAGE_NAME}:${service}-${revision}
 	done
 fi
 
