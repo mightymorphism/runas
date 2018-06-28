@@ -8,7 +8,7 @@ LABEL description="Runas build environment"
 
 WORKDIR /root
 
-RUN mkdir -p /etc/buid
+RUN mkdir -p /etc/build
 RUN apt-get update && apt-get upgrade -y
 
 COPY bin/cfg-version /usr/local/bin

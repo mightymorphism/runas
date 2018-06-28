@@ -22,7 +22,6 @@ apt-get install -y dnsutils telnet
 apt-get install -y libpq-dev postgresql-client
 apt-get install -y ca-certificates
 apt-get install -y locales
-apt-get install -y runas
 
 apt-get clean
 
