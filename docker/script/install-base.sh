@@ -16,6 +16,7 @@ apt-get update -y
 apt-get upgrade -y
 
 # Install basic shell utilities
+apt-get install -y ruby
 apt-get install -y file wget
 apt-get install -y vim-tiny less
 apt-get install -y dnsutils telnet

@@ -14,7 +14,11 @@ RUN apt-get update && apt-get upgrade -y
 COPY bin/cfg-version /usr/local/bin
 COPY config/versions.yml REVISION /etc/build/
 
-COPY docker/script/install-base.sh docker/script/install-dev-common.sh /root/
+COPY docker/script/install-base.sh		\
+	 docker/script/install-dev-common.sh	\
+	docker/script/install-golang.sh		\
+	/root/
 
 RUN bash -l /root/install-base.sh
 RUN bash -l /root/install-dev-common.sh
+RUN bash -l /root/install-golang.sh
