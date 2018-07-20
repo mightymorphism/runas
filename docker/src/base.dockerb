@@ -11,7 +11,7 @@ WORKDIR /root
 RUN mkdir -p /etc/build
 RUN apt-get update && apt-get upgrade -y
 
-COPY bin/cfg-version /usr/local/bin
+COPY mk/scripts/cfg-version /usr/local/bin
 COPY config/versions.yml REVISION /etc/build/
 
 COPY docker/script/install-base.sh		\
