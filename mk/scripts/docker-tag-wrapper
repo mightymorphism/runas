@@ -1,0 +1,243 @@
+#! /usr/bin/env ruby
+# Copyright (c) 2018 Trough Creek Holdings, LLC.  All Rights Reserved
+
+# FUTURE: consider retagging via AWS API for ECR targets
+# https://docs.aws.amazon.com/AmazonECR/latest/userguide/retag-aws-cli.html
+
+#	#{ROOT}/mk/scripts/docker-tag-wrapper remote #{DOCKER_REGISTRY} #{DOCKER_REPOSITORY} #{DOCKER_NS} #{1} #{REVISION}
+
+require 'json'
+require 'time'
+require 'open3'
+require 'ostruct'
+require 'optparse'
+require 'shellwords'
+
+USAGE_BANNER = "Usage: docker-tag-wrapper <verb> <$args.registry> <repo> <ns> <$args.image> <$args.revision>"
+
+def ecr_get_image_metadata(tag_list)
+  cmd_manifest = %w(aws)
+  if $args.aws_profile then
+    cmd_manifest += %W(--profile #{$args.aws_profile})
+  end
+  cmd_manifest += %W(ecr batch-get-image --repository-name #{$args.repository})
+  if $args.aws_registry_id then
+    cmd_manifest += %W(--registry-id #{$args.aws_registry_id})
+  end
+  cmd_manifest += %W(--image-ids)
+  cmd_manifest << "imageTag=#{tag_list.first}"
+  cmd_manifest += %w(--output json)
+
+  cmd = cmd_manifest.join(' ')
+
+  out, status = Open3.capture2(cmd)
+  if status.exitstatus != 0 then
+    $stderr.puts "Unable to retrieve manifest for #{tag_list.join(',').inspect}"
+    Kernel.exit(1)
+  end
+
+  return out
+end
+
+def ecr_set_image_tag(tag, manifest)
+  #manifest = manifest.dup.strip.gsub(/\s+/, " ")
+
+  cmd_tag = %w(aws)
+  if $args.aws_profile then
+    cmd_tag += %W(--profile #{$args.aws_profile})
+  end
+  cmd_tag += %W(ecr put-image --repository-name #{$args.repository})
+  if $args.aws_registry_id then
+    cmd_tag += %W(--registry-id #{$args.aws_registry_id})
+  end
+  cmd_tag += %W(--image-tag #{tag})
+  cmd_tag += %W(--image-manifest '#{manifest}')
+
+  cmd = cmd_tag.join(' ')
+
+  out, status = Open3.capture2(cmd)
+  if status.exitstatus != 0 then
+    if out.include?('ImageAlreadyExistsException') then
+      $stderr.puts "WARNING: tag #{tag.inspect} already set; will NOT override"
+    else
+      $stderr.puts "Unable to set tag: #{tag.inspect}"
+      Kernel.exit(1)
+    end
+  end
+
+  return out
+end
+
+def docker_get_image_digest(repo_and_tag)
+  cmd = %W(docker images -q --no-trunc #{repo_and_tag})
+  out, status = Open3.capture2(cmd.join(' '))
+  if status.exitstatus != 0 then
+    return nil
+  end
+
+  out.strip!
+  return out
+end
+
+$args = OpenStruct.new
+$args.dry_run = false
+$args.label_latest = false
+$args.label_ecr = false
+
+opt = OptionParser.new do |opts|
+  opts.banner = USAGE_BANNER
+  opts.on("-n", "--dry-run", "Print out, but do not execute, commands", :NONE) do
+    $args.dry_run = true
+  end
+
+  opts.on("-p", "--aws-profile", "Set AWS auth profile", :REQUIRED) do |p|
+    $args.aws_profile = p
+  end
+
+  opts.on("-I", "--aws-registry-id", "Set AWS CLI registry IDs", :REQUIRED) do |ids|
+    $args.aws_registry_id = ids
+  end
+
+  opts.on("-E", "--label-ecr", "Automatically add conventional labels", :NONE) do
+    $args.label_ecr = true
+  end
+  opts.on("-L", "--label-latest", "Automatically add a latest label", :NONE) do
+    $args.label_latest = true
+  end
+
+end
+
+opt.parse!
+
+%w(verb registry repository ns image revision).each_with_index do |var, i|
+   if ARGV[i].nil? || ARGV[i].empty? then
+     $stderr.puts "Missing argument: #{var.inspect}"
+     $stderr.puts USAGE_BANNER
+     exit(1)
+   end
+
+   case var
+   when 'verb'
+     if !%w(tag push pull).member?(ARGV[i]) then
+       $stderr.puts "<verb> must be one of 'tag', 'push', or 'pull'"
+       exit(1)
+     end
+   end
+
+   $args[var.to_sym] = ARGV[i]
+end
+
+$args.branch = `git rev-parse --abbrev-ref HEAD`
+if $? != 0 || $args.branch.nil? || $args.branch.empty? then
+  $stderr.puts "Unable to retrieve current branch"
+  exit(1)
+else
+  $args.branch.chomp!
+end
+
+$args.build_sha = `git rev-parse HEAD`
+if $? != 0 || $args.build_sha.nil? || $args.build_sha.empty? then
+  $stderr.puts "Unable to retrieve commit ID"
+  exit(1)
+else
+  $args.build_sha.chomp!
+  $args.build_sha = $args.build_sha[0...8]
+end
+
+$args.build_date = `docker inspect --format '{{.ContainerConfig.Labels.build_time}}' #{$args.ns}:#{$args.image}-#{$args.revision}`
+if $? != 0 || $args.build_date.nil? || $args.build_date.empty? then
+  $stderr.puts "Unable to retrieve build time stamp"
+  exit(1)
+else
+  $args.build_date.chomp!
+
+  # Remove colons from timestamp to avoid munging Docker tag
+  $args.build_date = Time.parse($args.build_date).gmtime.strftime("%Y-%m-%dT%H%M%S")
+end
+
+tag_list = []
+if $args.label_ecr then
+	tag_list << "#{$args.registry}/#{$args.repository}:#{$args.image}-#{$args.branch}-#{$args.build_sha}"
+	tag_list << "#{$args.registry}/#{$args.repository}:#{$args.image}-build-#{$args.build_date}"
+	tag_list << "#{$args.registry}/#{$args.repository}:#{$args.image}"
+end
+
+if $args.label_latest then
+	tag_list << "#{$args.registry}/#{$args.repository}:#{$args.image}-latest"
+end
+
+tag_list << "#{$args.registry}/#{$args.repository}:#{$args.image}-#{$args.revision}"
+
+tag_commands = tag_list.map do |t|
+  "docker tag #{$args.ns}:#{$args.image}-#{$args.revision} #{t}"
+end
+
+push_commands = tag_list.map do |t|
+  "docker push #{t}"
+end
+
+pull_commands = "docker pull #{tag_list.first}"
+
+ecr_tags = []
+commands = []
+case $args.verb
+when 'tag'
+  commands = tag_commands
+when 'push'
+  if $args.label_ecr then
+    commands << push_commands.first
+  else
+    commands = push_commands
+  end
+when 'pull'
+  commands = pull_commands
+end
+
+commands.each do |cmd|
+  if $args.dry_run then
+    puts cmd
+  else
+    if !Kernel.system(cmd) then
+      $stderr.puts "Failed: #{cmd.inspect}"
+      exit(1)
+    end
+  end
+end
+
+if $args.label_ecr && $args.verb == 'push' then
+  pushed_tags = []
+  pushed_digest = docker_get_image_digest(tag_list.first)
+
+  remote_tag_list = tag_list.map { |tag| tag.sub(/^[^:]*:/, '') }
+  metadata = ecr_get_image_metadata(remote_tag_list)
+  metadata = JSON.parse(metadata)
+
+  manifest = nil
+  metadata['images'].each do |img|
+     data = JSON.parse(img['imageManifest'])
+     if data['config']['digest'] == pushed_digest then
+        pushed_tags << img['imageId']['imageTag']
+        if manifest.nil? then
+          manifest = img['imageManifest']
+        end
+    end
+  end
+
+  to_tag = remote_tag_list - pushed_tags
+
+  to_tag.each do |tag|
+    remote_tag = tag.sub(/^[^:]*:/, '')
+    ecr_tags << [remote_tag, manifest]
+  end
+
+  if $args.dry_run then
+     ecr_tags.each do |tag, manifest|
+       puts "# add tag #{tag}"
+     end
+  else
+     ecr_tags.each do |tag, manifest|
+       $stderr.puts "Setting tag #{tag.inspect}"
+       ecr_set_image_tag(tag, manifest)
+     end
+  end
+end
