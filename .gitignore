@@ -9,6 +9,8 @@
 .DS_Store
 .DS_Store?
 
+.dockerwrap
+
 /docker/build/Dockerfile.*
 /docker/build/compose-*.yml
 /docker/build/.stamp.*
