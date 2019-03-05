@@ -1,6 +1,6 @@
-// Copyright (c) 2018 Trough Creek Holdings, LLC.  All Rights Reserved
+// Copyright (c) 2017, 2018 Trough Creek Holdings, LLC.  All Rights Reserved
 package main
 
-const BuildRelease = "0.0.8"
-const BuildRevision = "eab24d420779e82377a0035a7295f49936692f4c"
-const BuildDate = "2018-03-22 17:32:48 -0400"
+const BuildRelease = "0.0.10"
+const BuildRevision = "bfc65bf7f5d448be685b6a6a93fd73d59299a873"
+const BuildDate = "2019-03-05 16:45:33 -0500"
