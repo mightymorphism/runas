@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-# Copyright (c) 2018 Trough Creek Holdings, LLC.  All Rights Reserved
+# Copyright (c) 2018-2019 Trough Creek Holdings, LLC.  All Rights Reserved.
 
 # FUTURE: consider retagging via AWS API for ECR targets
 # https://docs.aws.amazon.com/AmazonECR/latest/userguide/retag-aws-cli.html
@@ -17,6 +17,9 @@ USAGE_BANNER = "Usage: docker-tag-wrapper <verb> <$args.registry> <repo> <ns> <$
 
 def ecr_get_image_metadata(tag_list)
   cmd_manifest = %w(aws)
+  if $args.aws_region then
+    cmd_manifest += %W(--region #{$args.aws_region})
+  end
   if $args.aws_profile then
     cmd_manifest += %W(--profile #{$args.aws_profile})
   end
@@ -43,6 +46,9 @@ def ecr_set_image_tag(tag, manifest)
   #manifest = manifest.dup.strip.gsub(/\s+/, " ")
 
   cmd_tag = %w(aws)
+  if $args.aws_region then
+    cmd_tag += %W(--region #{$args.aws_region})
+  end
   if $args.aws_profile then
     cmd_tag += %W(--profile #{$args.aws_profile})
   end
@@ -55,9 +61,9 @@ def ecr_set_image_tag(tag, manifest)
 
   cmd = cmd_tag.join(' ')
 
-  out, status = Open3.capture2(cmd)
+  out, err, status = Open3.capture3(cmd)
   if status.exitstatus != 0 then
-    if out.include?('ImageAlreadyExistsException') then
+    if err.include?('ImageAlreadyExistsException') then
       $stderr.puts "WARNING: tag #{tag.inspect} already set; will NOT override"
     else
       $stderr.puts "Unable to set tag: #{tag.inspect}"
@@ -79,15 +85,49 @@ def docker_get_image_digest(repo_and_tag)
   return out
 end
 
+def run_command(cmd, dir=nil)
+  out = nil
+  dir ||= Dir.pwd
+  Dir.chdir(dir) do
+    out, err, status = Open3.capture3(cmd)
+    if status.exitstatus != 0 then
+      return nil
+    end
+  end
+  out.chomp!
+  return out
+end
+
 $args = OpenStruct.new
+$args.force = false
 $args.dry_run = false
+$args.build_root = ENV['BUILD_ROOT']
+$args.build_repo_root = ENV['BUILD_REPO_ROOT']
 $args.label_latest = false
 $args.label_ecr = false
+$args.aws_region = nil
+$args.aws_profile = nil
 
 opt = OptionParser.new do |opts|
   opts.banner = USAGE_BANNER
   opts.on("-n", "--dry-run", "Print out, but do not execute, commands", :NONE) do
     $args.dry_run = true
+  end
+
+  opts.on("-f", "--force", "Force (i.e. ignore failures)", :NONE) do
+    $args.force = true
+  end
+
+  opts.on("-b", "--build-root", "Set BUILD_ROOT", :REQUIRED) do |r|
+    $args.build_root = r
+  end
+
+  opts.on("-r", "--build-repo-root", "Set BUILD_REPO_ROOT", :REQUIRED) do |r|
+    $args.build_repo_root = r
+  end
+
+  opts.on("-r", "--aws-region", "Set AWS auth region", :REQUIRED) do |r|
+    $args.aws_region = r
   end
 
   opts.on("-p", "--aws-profile", "Set AWS auth profile", :REQUIRED) do |p|
@@ -101,10 +141,10 @@ opt = OptionParser.new do |opts|
   opts.on("-E", "--label-ecr", "Automatically add conventional labels", :NONE) do
     $args.label_ecr = true
   end
+
   opts.on("-L", "--label-latest", "Automatically add a latest label", :NONE) do
     $args.label_latest = true
   end
-
 end
 
 opt.parse!
@@ -127,46 +167,65 @@ opt.parse!
    $args[var.to_sym] = ARGV[i]
 end
 
-$args.branch = `git rev-parse --abbrev-ref HEAD`
-if $? != 0 || $args.branch.nil? || $args.branch.empty? then
+$args.branch = run_command("git rev-parse --abbrev-ref HEAD", $args.build_repo_root)
+if $args.branch.nil? || $args.branch.empty? then
   $stderr.puts "Unable to retrieve current branch"
   exit(1)
-else
-  $args.branch.chomp!
 end
 
-$args.build_sha = `git rev-parse HEAD`
-if $? != 0 || $args.build_sha.nil? || $args.build_sha.empty? then
+$args.build_sha = run_command("git rev-parse HEAD", $args.build_repo_root)
+if $args.build_sha.nil? || $args.build_sha.empty? then
   $stderr.puts "Unable to retrieve commit ID"
   exit(1)
 else
-  $args.build_sha.chomp!
   $args.build_sha = $args.build_sha[0...8]
 end
 
-$args.build_date = `docker inspect --format '{{.ContainerConfig.Labels.build_time}}' #{$args.ns}:#{$args.image}-#{$args.revision}`
-if $? != 0 || $args.build_date.nil? || $args.build_date.empty? then
-  $stderr.puts "Unable to retrieve build time stamp"
-  exit(1)
+if $args.verb == 'pull' then
+  $stderr.puts "Skipping computation of build_date for pull..."
 else
-  $args.build_date.chomp!
-
-  # Remove colons from timestamp to avoid munging Docker tag
-  $args.build_date = Time.parse($args.build_date).gmtime.strftime("%Y-%m-%dT%H%M%S")
+  $args.build_date = run_command("docker inspect --format '{{.ContainerConfig.Labels.build_time}}' #{$args.ns}:#{$args.image}-#{$args.revision}")
+  if $args.build_date.nil? || $args.build_date.empty? then
+    $stderr.puts "Unable to retrieve build time stamp"
+    exit(1)
+  else
+    # Remove colons from timestamp to avoid munging Docker tag
+    $args.build_date = Time.parse($args.build_date).gmtime.strftime("%Y-%m-%dT%H%M%S")
+  end
 end
 
 tag_list = []
-if $args.label_ecr then
-	tag_list << "#{$args.registry}/#{$args.repository}:#{$args.image}-#{$args.branch}-#{$args.build_sha}"
-	tag_list << "#{$args.registry}/#{$args.repository}:#{$args.image}-build-#{$args.build_date}"
-	tag_list << "#{$args.registry}/#{$args.repository}:#{$args.image}"
-end
+pull_tag_list = []
+remote_tag_prefix = "#{$args.registry}/#{$args.repository}"
+
+tag = "#{remote_tag_prefix}:#{$args.image}-commit-#{$args.build_sha}"
+tag_list << tag
+pull_tag_list << tag
+
+tag = "#{remote_tag_prefix}:#{$args.image}-branch-#{$args.branch}"
+tag_list << tag
+pull_tag_list << tag
 
 if $args.label_latest then
-	tag_list << "#{$args.registry}/#{$args.repository}:#{$args.image}-latest"
+  tag = "#{remote_tag_prefix}:#{$args.image}-#{$args.branch}-latest"
+  tag_list <<  tag
+  pull_tag_list << tag
 end
 
-tag_list << "#{$args.registry}/#{$args.repository}:#{$args.image}-#{$args.revision}"
+if $args.verb != 'pull' then
+  tag_list << "#{remote_tag_prefix}:#{$args.image}-build-#{$args.build_date}"
+end
+tag_list << "#{remote_tag_prefix}:#{$args.image}"
+
+if $args.label_latest then
+  tag = "#{remote_tag_prefix}:#{$args.image}-latest"
+  tag_list << tag
+  pull_tag_list << tag
+end
+
+tag = "#{remote_tag_prefix}:#{$args.image}-#{$args.revision}"
+tag_list << tag
+pull_tag_list << tag
 
 tag_commands = tag_list.map do |t|
   "docker tag #{$args.ns}:#{$args.image}-#{$args.revision} #{t}"
@@ -176,10 +235,13 @@ push_commands = tag_list.map do |t|
   "docker push #{t}"
 end
 
-pull_commands = "docker pull #{tag_list.first}"
+pull_commands = pull_tag_list.map do |t|
+  "docker pull #{t}"
+end
 
 ecr_tags = []
 commands = []
+exec_mode = 'all'			# BOTCH: super crude
 case $args.verb
 when 'tag'
   commands = tag_commands
@@ -190,18 +252,29 @@ when 'push'
     commands = push_commands
   end
 when 'pull'
+  exec_mode = 'any'			# we just need one
   commands = pull_commands
 end
 
+status = []
 commands.each do |cmd|
   if $args.dry_run then
     puts cmd
   else
-    if !Kernel.system(cmd) then
+    rv = Kernel.system(cmd)
+    status << [cmd, rv]
+    if !$args.force && !rv && exec_mode == 'all' then
       $stderr.puts "Failed: #{cmd.inspect}"
       exit(1)
+    elsif rv && exec_mode == 'any' then
+      break
     end
   end
+end
+
+if !$args.force && exec_mode == 'any' && status.all? { |v| !v[1] } then
+  $stderr.puts "Failed: all #{$args.verb} commands failed."
+  exit(1)
 end
 
 if $args.label_ecr && $args.verb == 'push' then
