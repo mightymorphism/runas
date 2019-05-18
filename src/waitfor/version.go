@@ -1,4 +1,4 @@
-// Copyright (c) 2017, 2018 Trough Creek Holdings, LLC.  All Rights Reserved
+// Copyright (c) 2017, 2018 Trough Creek Holdings, LLC.  All Rights Reserved.
 package main
 
 const BuildRelease = "0.0.10"

@@ -1,4 +1,4 @@
-// Copyright (c) 2018 Trough Creek Holdings, LLC.  All Rights Reserved
+// Copyright (c) 2018 Trough Creek Holdings, LLC.  All Rights Reserved.
 
 package main
 
