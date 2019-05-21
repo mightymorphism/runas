@@ -1,4 +1,4 @@
-# Copyright (c) 2017, 2018 Trough Creek Holdings, LLC.  All Rights Reserved
+# Copyright (c) 2017, 2018 Trough Creek Holdings, LLC.  All Rights Reserved.
 
 # NB: requires "experimental" mode because Docker is dumb as rocks
 ifneq (${DOCKER_SQUASH},)
@@ -20,7 +20,12 @@ define DOCKER_BUILD_template
 build/Dockerfile.${1}: src/${1}.dockerb
 	${ROOT}/mk/scripts/dockerb -o build/Dockerfile.${1} src/${1}.dockerb ${DOCKERB_ARGS}
 
-docker_expand_${1}: build/Dockerfile.${1}
+build/Dockerfile.${1}.dockerignore:
+	if [ -f src/${1}.dockerignore ] ; then                          \
+		cmp -s src/${1}.dockerignore build/Dockerfile.${1}.dockerignore || cp -f src/${1}.dockerignore build/Dockerfile.${1}.dockerignore       ; \
+	fi
+
+docker_expand_${1}: build/Dockerfile.${1} build/Dockerfile.${1}.dockerignore
 
 docker_build_${1}: docker_expand_${1}
 ifeq ($(filter ${1},${DOCKERB_FORCE_ON_COMMIT}),)
@@ -56,6 +61,9 @@ docker_remote_push_${1}: docker_remote_tag_${1}
 
 docker_remote_pull_${1}:
 	${ROOT}/mk/scripts/docker-tag-wrapper ${DOCKER_TAG_WRAPPER_SYSTEM_ARGS} ${DOCKER_TAG_WRAPPER_ARGS} pull ${DOCKER_REGISTRY} ${DOCKER_REPOSITORY} ${DOCKER_NS} ${1} ${REVISION}
+
+docker_remote_pull_latest_${1}:
+	${ROOT}/mk/scripts/docker-tag-wrapper ${DOCKER_TAG_WRAPPER_SYSTEM_ARGS} ${DOCKER_TAG_WRAPPER_ARGS} --label-only-latest pull ${DOCKER_REGISTRY} ${DOCKER_REPOSITORY} ${DOCKER_NS} ${1} ${REVISION}
 
 ifndef DOCKER_REMOTE_CACHE_DISABLE
 # Pull but allow failures (we're just warming the local cache)
@@ -118,16 +126,22 @@ docker_remote_push: $(patsubst %, docker_remote_push_%, ${DOCKER_REMOTE_CONTAINE
 
 docker_remote_pull: $(patsubst %, docker_remote_pull_%, ${DOCKER_REMOTE_CONTAINERS})
 
+docker_remote_pull_latest: $(patsubst %, docker_remote_pull_latest_%, ${DOCKER_REMOTE_CONTAINERS})
+
 docker_remote_cache: $(patsubst %, docker_remote_cache_%, ${DOCKER_REMOTE_CONTAINERS})
 
-docker_clean: $(patsubst %,docker_clean_%, ${DOCKER_CONTAINERS})
+docker_clean: $(patsubst %,docker_clean_%, ${DOCKER_CONTAINERS}) docker_prune
 
 docker_nuke: docker_cleanup $(call func_reverse, $(patsubst %,docker_nuke_%, ${DOCKER_CONTAINERS}))
 	docker volume prune -f
+	docker builder prune -a -f
 
-docker_cleanup:
+docker_prune:
 	docker container prune -f
 	docker image prune -f
+	docker builder prune -f
+
+docker_cleanup: docker_prune
 	docker images "${DOCKER_REGISTRY}/${DOCKER_REPOSITORY}" --format "{{.Repository}}:{{.Tag}}" | grep -v ':<none>$$' | xargs -r docker rmi --force
 	docker images "${DOCKER_REGISTRY}/${DOCKER_REPOSITORY}" --format "{{.Digest}}" | xargs -r docker rmi --force
 
