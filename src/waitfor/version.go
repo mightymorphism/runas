@@ -1,6 +1,6 @@
 // Copyright (c) 2017, 2018 Trough Creek Holdings, LLC.  All Rights Reserved.
 package main
 
-const BuildRelease = "0.0.11"
-const BuildRevision = "5ffa01bc3f2bf2686f44f8c629d47a7fa661ee29"
-const BuildDate = "2020-12-19 12:28:33 -0500"
+const BuildRelease = "0.0.12"
+const BuildRevision = "cf437562d41d757b03a9628b6a985f25af7a61e9"
+const BuildDate = "2021-01-03 20:00:39 -0500"
