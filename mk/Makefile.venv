@@ -1,10 +1,10 @@
-# Copyright (c) 2017 Trough Creek Holdings, LLC.  All Rights Reserved.
+# Copyright (c) 2017-2019 Trough Creek Holdings, LLC.  All Rights Reserved.
 #
 # Make venv_* dependency of non-venv version
 $(foreach _, init check clean nuke reset, $(eval $_: venv_$_))
 $(foreach _, init check clean nuke reset, $(eval .PHONY: venv_$_))
 
-VENV_ROOT := ${ROOT}/vendor/virtualenv
+VENV_ROOT ?= ${ROOT}/vendor/virtualenv
 export VENV_ROOT
 
 venv_check:
@@ -14,23 +14,28 @@ venv_check:
 	fi
 
 venv_init:
-#	python3 -m venv ${VENV_ROOT}
-	@if [ \! -f ${VENV_ROOT}/bin/activate ] ; then	\
-                virtualenv --no-site-packages ${VENV_ROOT};     \
+	@if [ \! -f ${VENV_ROOT}/bin/activate ] ; then			\
+		use_venv=`${PYTHON} -c "import sys; print((1, 0)[sys.version_info <= (3,3)])"` ; \
+		if [ $${use_venv} -eq 0 ] ; then			\
+			echo "virtualenv --python=${PYTHON} ..." ;	\
+			virtualenv --python=${PYTHON} --no-site-packages ${VENV_ROOT};     \
+		else							\
+			echo "${PYTHON} -m venv ..." ;			\
+			${PYTHON} -m venv ${VENV_ROOT} ;		\
+		fi							\
+	fi
+	@if [ -f ${VENV_ROOT}/bin/activate ] ; then			\
+		. ${VENV_ROOT}/bin/activate ;				\
+		${PYTHON_PIP} install --upgrade wheel ;			\
+		${PYTHON_PIP} install --upgrade --user wheel ;		\
 	fi
 
-venv_install: venv_check
-	pip install --upgrade --user wheel
-	pip install --upgrade --user -r requirements.txt
-
-venv_wheel: venv_check
-	pip wheel -w ${ROOT}/vendor/wheel -r requirements.txt
-
 venv_clean:
-	rm -f *.pyc
+	find ${VENV_ROOT} -type f -a -name '*.py[co]' | xargs rm -f
 
 venv_nuke: venv_clean
-	find ${VENV_ROOT} -type f -a -name '*.pyc' | xargs rm -f
+	rm -Rf ${VENV_ROOT}
+	find ${ROOT} -type f -a -name '*.py[co]' | xargs rm -f
 
 venv_reset:
 	virtualenv --clear ${VENV_ROOT}

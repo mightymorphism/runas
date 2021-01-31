@@ -1,4 +1,4 @@
-# Copyright (c) 2017, 2018 Trough Creek Holdings, LLC.  All Rights Reserved.
+# Copyright (c) 2017-2019 Trough Creek Holdings, LLC.  All Rights Reserved.
 #
 # Make python_* dependency of non-python version
 $(foreach _, init check clean nuke reset, $(eval $_: python_$_))
@@ -7,7 +7,7 @@ $(foreach _, init check clean nuke reset, $(eval .PHONY: python_$_))
 include ${ROOT}/mk/Makefile.venv
 
 python_check:
-	@if [ -z "$${VIRTUALENV}" ] ; then				\
+	@if [ -z "$${VIRTUAL_ENV}" ] ; then				\
 		echo "virtualenv not (properly) activated" 1>&2 ;	\
 		exit 1 ;						\
 	fi
@@ -15,8 +15,33 @@ python_check:
 python_init: python_check
 
 python_clean:
+	find . -path ./vendor/virtualenv -prune -o \( -type d -a -name __pycache__ \) -print0 | xargs -0 rm -Rf
 
-python_nuke: python_clean
-	find . -path ./vendor -prune -o \( -type d -a -name __pycache__ \) -print0 | xargs -0 rm -Rf
+python_nuke: python_clean venv_nuke
+	find ${ROOT}/vendor/wheel -print0 | xargs -0 rm -f
 
 python_reset: python_clean
+
+pip_freeze: venv_check
+	${PYTHON_PIP} freeze | grep -v "^pkg-resources==" > requirements.txt
+
+pip_download:
+	${PYTHON_PIP} download -r requirements.txt -d ${ROOT}/vendor/wheel
+
+pip_wheel: venv_check
+	${PYTHON_PIP} wheel -w ${ROOT}/vendor/wheel -r requirements.txt
+
+pip_install: venv_check
+	PIP_ARGS="-r requirements.txt";					\
+	if test -z "${VIRTUAL_ENV}" ;					\
+	then								\
+		PIP_ARGS="$${PIP_ARGS} --user";				\
+	fi ;								\
+	if test -d ${ROOT}/vendor/wheel ;				\
+	then								\
+		PIP_ARGS="$${PIP_ARGS} --no-index --find-links ${ROOT}/vendor/wheel" ;	\
+	fi ;								\
+	${PYTHON_PIP} install $${PIP_ARGS};
+
+pip_upgrade:
+	${PYTHON_PIP} install --user --upgrade -r requirements.txt

@@ -4,23 +4,23 @@
 $(foreach _, init check clean nuke reset, $(eval $_: lambda_$_))
 $(foreach _, init check clean nuke reset, $(eval .PHONY: lambda_$_))
 
+LAMBDA_SRC_FILES ?= lambda_function.py
+
 lambda_build: venv_init
 	make ${LAMBDA}.zip
 
-${LAMBDA}.zip: lambda_function.py ${LAMBDA_ZIP_FILES}
-	. ${VENV_ROOT}/bin/activate ;					\
-									\
+${LAMBDA}.zip: ${LAMBDA_SRC_FILES} ${LAMBDA_ZIP_FILES}
 	rm -f ${LAMBDA}.zip ;						\
-	zip -r ${LAMBDA}.zip *.py ;					\
+	zip -r9 ${LAMBDA}.zip ${LAMBDA_SRC_FILES} -x **/__pycache__/*; \
 									\
 	zipfile=${CURDIR}/${LAMBDA}.zip ;				\
 	for f in ${LAMBDA_ZIP_FILES} ; do				\
 		(cd `dirname $$f` && zip -r $$zipfile `basename $$f`) ;	\
 	done ;								\
 									\
-	for d in local/lib lib/python2.7/site-packages ; do		\
-		if [ -d ${VENV_ROOT}/$$d ] ; then			\
-			(cd ${VENV_ROOT}/$$d && zip -r $$zipfile .) ;	\
+	for d in `find ${VENV_ROOT} -type d -a -name site-packages`; do	\
+		if [ -d $$d ] ; then					\
+			(cd $$d && zip -r9 $$zipfile .) ;		\
 		fi							\
 	done
 
